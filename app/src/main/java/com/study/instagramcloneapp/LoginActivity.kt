@@ -56,6 +56,11 @@ class LoginActivity : AppCompatActivity() {
         //printHashKey()
         callbackManager = CallbackManager.Factory.create()
     }
+
+    override fun onStart() {
+        super.onStart()
+        moveMainPage(auth?.currentUser)
+    }
     fun printHashKey() {
         try {
             val info = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES)
@@ -172,6 +177,7 @@ class LoginActivity : AppCompatActivity() {
         if (user != null) {
             val intent = Intent(this,MainActivity::class.java)
             startActivity(intent)
+            finish()
         }
     }
 }

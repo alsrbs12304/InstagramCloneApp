@@ -1,5 +1,7 @@
 package com.study.instagramcloneapp.navigation
 
+import android.content.ClipDescription
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,6 +13,7 @@ import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.study.instagramcloneapp.R
+import com.study.instagramcloneapp.navigation.model.AlarmDTO
 import com.study.instagramcloneapp.navigation.model.ContentDTO
 import kotlinx.android.synthetic.main.fragment_detail.view.*
 import kotlinx.android.synthetic.main.item_detail.view.*
@@ -32,12 +35,12 @@ class DetailViewFragment : Fragment(){
         var contentUidList : ArrayList<String> = arrayListOf()
 
         init {
-
-
-
             firestore?.collection("images")?.orderBy("timestamp")?.addSnapshotListener { querySnapshot, firebaseFirestoreException ->
                 contentDTOs.clear()
                 contentUidList.clear()
+                // Sometimes, This code return null of querySnapshot when it signout
+                if(querySnapshot == null) return@addSnapshotListener
+
                 for(snapshot in querySnapshot!!.documents){
                     var item = snapshot.toObject(ContentDTO::class.java)
                     contentDTOs.add(item!!)
@@ -88,6 +91,22 @@ class DetailViewFragment : Fragment(){
                 // This is unlike status
                 viewHolder.detailviewitem_favorite_imageview.setImageResource(R.drawable.ic_favorite_border)
             }
+
+            // This code is when ute profile image is clicked
+            viewHolder.detailviewitem_profile_image.setOnClickListener {
+                var fragment = UserFragment()
+                var bundle = Bundle()
+                bundle.putString("destinationUid",contentDTOs[position].uid)
+                bundle.putString("userId",contentDTOs[position].userId)
+                fragment.arguments = bundle
+                activity?.supportFragmentManager?.beginTransaction()?.replace(R.id.main_content,fragment)?.commit()
+            }
+            viewHolder.detailviewitem_comment_imageview.setOnClickListener { v ->
+                var intent = Intent(v.context,CommentActivity::class.java)
+                intent.putExtra("contentUid", contentUidList[position])
+                intent.putExtra("detinationUid", contentDTOs[position].uid)
+                startActivity(intent)
+            }
         }
 
         fun favoriteEvent(position: Int){
@@ -103,9 +122,20 @@ class DetailViewFragment : Fragment(){
                     // When the button is not clicked
                     contentDTO?.favoriteCount = contentDTO?.favoriteCount + 1
                     contentDTO?.favorites[uid!!] = true
+                    favoriteAlarm(contentDTOs[position].uid!!)
                 }
                 transaction.set(tsDoc,contentDTO)
             }
+        }
+
+        fun favoriteAlarm(destinationUid : String){
+            var alarmDTO = AlarmDTO()
+            alarmDTO.destinationUid = destinationUid
+            alarmDTO.userId = FirebaseAuth.getInstance().currentUser?.email
+            alarmDTO.uid = FirebaseAuth.getInstance().currentUser?.uid
+            alarmDTO.kind = 0
+            alarmDTO.timestamp = System.currentTimeMillis()
+            FirebaseFirestore.getInstance().collection("alarms").document().set(alarmDTO)
         }
 
     }
